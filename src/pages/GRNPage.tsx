@@ -27,7 +27,6 @@ const GRNPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // data
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
@@ -35,23 +34,17 @@ const GRNPage: React.FC = () => {
   const [supplierName, setSupplierName] = useState('');
   const [invoiceNo, setInvoiceNo] = useState('');
 
-  // grn lines
   const [lines, setLines] = useState<LineInput[]>([]);
 
-  // search
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<Product[]>([]);
 
-  // ---- IMPORTANT: KEEP TRANSACTION ID ----
   const [createdId, setCreatedId] = useState<string | null>(null);
 
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ====================================
-  // Load warehouses + products
-  // ====================================
   useEffect(() => {
     (async () => {
       try {
@@ -64,9 +57,6 @@ const GRNPage: React.FC = () => {
     })();
   }, []);
 
-  // ====================================
-  // 🟢 Restore last transaction (if page refresh)
-  // ====================================
   useEffect(() => {
     const saved = localStorage.getItem('current_grn_id');
     if (saved) setCreatedId(saved);
@@ -76,9 +66,6 @@ const GRNPage: React.FC = () => {
     if (createdId) localStorage.setItem('current_grn_id', createdId);
   }, [createdId]);
 
-  // ====================================
-  // Live search
-  // ====================================
   const handleSearch = async () => {
     if (!search.trim()) {
       setResults([]);
@@ -124,9 +111,6 @@ const GRNPage: React.FC = () => {
 
   const removeLine = (i: number) => setLines(prev => prev.filter((_, x) => x !== i));
 
-  // ====================================
-  // CREATE GRN
-  // ====================================
   const handleCreate = async () => {
     try {
       setMsg('');
@@ -146,7 +130,6 @@ const GRNPage: React.FC = () => {
 
       setCreatedId(res.data._id);
       setMsg('GRN Created. Approve to add stock.');
-
     } catch (error: any) {
       setErr(error?.response?.data?.message || 'Failed to create GRN');
     } finally {
@@ -154,9 +137,6 @@ const GRNPage: React.FC = () => {
     }
   };
 
-  // ====================================
-  // APPROVE GRN
-  // ====================================
   const handleApprove = async () => {
     if (!createdId) return;
 
@@ -165,20 +145,12 @@ const GRNPage: React.FC = () => {
       setMsg('');
       const res = await api.post(`/grn/${createdId}/approve`);
       setMsg(res.data.message || 'Approved');
-
       setLines([]);
-
-      // KEEP createdId visible on screen
-      // DO NOT CLEAR
-
     } catch (error: any) {
       setErr(error?.response?.data?.message || 'Failed to approve');
     }
   };
 
-  // ====================================
-  // RESET / NEW GRN FLOW
-  // ====================================
   const resetPage = () => {
     setCreatedId(null);
     localStorage.removeItem('current_grn_id');
@@ -190,180 +162,192 @@ const GRNPage: React.FC = () => {
   };
 
   return (
-    <div className="text-slate-100">
-      <h1 className="text-2xl font-semibold mb-4">GRN (Goods Received)</h1>
+    <div className="px-3 py-4 sm:px-4 sm:py-6 lg:px-8 text-slate-100">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <h1 className="text-xl font-semibold sm:text-2xl">GRN (Goods Received)</h1>
 
-      {/* =================== LEFT PANEL =================== */}
-      <div className="p-4 border border-slate-800 rounded-lg bg-slate-950 space-y-4">
-
-        {/* warehouse + supplier */}
-        <div className="flex gap-3">
-          <select
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm flex-1"
-          >
-            <option value="">Select Warehouse</option>
-            {warehouses.map(w => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            placeholder="Supplier (optional)"
-            className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm flex-1"
-            value={supplierName}
-            onChange={e => setSupplierName(e.target.value)}
-          />
-
-          <input
-            placeholder="Invoice No"
-            className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm flex-1"
-            value={invoiceNo}
-            onChange={e => setInvoiceNo(e.target.value)}
-          />
-        </div>
-
-        {/* Search */}
-        <div>
-          <div className="flex gap-2">
-            <input
-              placeholder="name / sku / alias"
-              className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <button
-              onClick={handleSearch}
-              className="px-4 py-2 text-sm bg-blue-500 text-slate-900 rounded"
+        <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950 px-4 py-4 sm:px-5 sm:py-5">
+          {/* warehouse + supplier + invoice */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <select
+              value={warehouseId}
+              onChange={(e) => setWarehouseId(e.target.value)}
+              className="w-full flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
-              Search
-            </button>
-          </div>
-
-          {results.length > 0 && (
-            <div className="mt-2 bg-slate-900 border border-slate-700 rounded max-h-48 overflow-auto">
-              {results.map(p => (
-                <div
-                  key={p._id}
-                  onClick={() => addLine(p)}
-                  className="px-3 py-2 border-b border-slate-800 cursor-pointer hover:bg-slate-800 text-sm"
-                >
-                  {p.name} ({p.sku})
-                </div>
+              <option value="">Select Warehouse</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
               ))}
-            </div>
-          )}
-        </div>
+            </select>
 
-        {/* LINES */}
-        <div>
-          <h2 className="text-sm font-semibold mb-2">Product Lines</h2>
-          {!lines.length ? (
-            <p className="opacity-50 text-sm">No lines yet.</p>
-          ) : (
-            lines.map((line, i) => {
-              const p = products.find(x => x._id === line.productId);
-              return (
-                <div key={i} className="flex items-center gap-3 mb-2">
-                  <div className="flex-1 text-sm">
-                    {p ? `${p.name} (${p.sku})` : line.productId}
-                  </div>
+            <input
+              placeholder="Supplier (optional)"
+              className="w-full flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+            />
 
-                  <select
-                    value={line.packingType}
-                    onChange={e => updateLine(i, { packingType: e.target.value as any })}
-                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs"
-                  >
-                    <option value="LOOSE">LOOSE</option>
-                    <option value="KATTA">KATTA</option>
-                    <option value="MASTER">MASTER</option>
-                    <option value="OTHER">OTHER</option>
-                  </select>
-
-                  <input
-                    type="number"
-                    min={1}
-                    className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs"
-                    value={line.quantity}
-                    onChange={e => updateLine(i, { quantity: +e.target.value })}
-                  />
-
-                  <input
-                    type="number"
-                    min={1}
-                    className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs"
-                    value={line.quantityBase}
-                    onChange={e => updateLine(i, { quantityBase: +e.target.value })}
-                  />
-
-                  <button
-                    onClick={() => removeLine(i)}
-                    className="px-2 py-1 border border-orange-500 text-orange-400 rounded text-xs"
-                  >
-                    X
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* BUTTONS */}
-        <div className="flex gap-3">
-          <button
-            disabled={loading}
-            onClick={handleCreate}
-            className="bg-green-500 text-slate-900 px-4 py-2 rounded text-sm font-semibold"
-          >
-            Save GRN
-          </button>
-
-          {createdId && (
-            <button
-              onClick={handleApprove}
-              className="bg-orange-500 text-slate-900 px-4 py-2 rounded text-sm font-semibold"
-            >
-              Approve + Update
-            </button>
-          )}
-        </div>
-
-        {/* STATUS */}
-        {msg && <div className="text-green-400 text-sm">{msg}</div>}
-        {err && <div className="text-red-400 text-sm">{err}</div>}
-
-        {/* =================================== */}
-        {/* 🔥 PERSISTENT TRANSACTION PANEL      */}
-        {/* =================================== */}
-        {createdId && (
-          <div className="mt-4 p-3 bg-slate-800/40 border border-slate-600 rounded text-sm">
-            <div className="font-semibold text-slate-100 mb-1">Transaction ID</div>
-
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-slate-900 rounded">
-                {createdId}
-              </span>
-
-              <button
-                className="px-2 py-1 bg-slate-700 rounded text-xs"
-                onClick={() => navigator.clipboard.writeText(createdId)}
-              >
-                Copy
-              </button>
-
-
-              <button
-                className="px-2 py-1 bg-red-500 text-white rounded text-xs"
-                onClick={resetPage}
-              >
-                New GRN
-              </button>
-            </div>
+            <input
+              placeholder="Invoice No"
+              className="w-full flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+            />
           </div>
-        )}
+
+          {/* Search */}
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                placeholder="name / sku / alias"
+                className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <button
+                onClick={handleSearch}
+                className="inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-blue-400"
+              >
+                Search
+              </button>
+            </div>
+
+            {results.length > 0 && (
+              <div className="max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 text-sm">
+                {results.map((p) => (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => addLine(p)}
+                    className="flex w-full cursor-pointer items-center justify-between border-b border-slate-800 px-3 py-2 text-left hover:bg-slate-800"
+                  >
+                    <span>{p.name}</span>
+                    <span className="text-xs text-slate-400">{p.sku}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Lines */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold">Product Lines</h2>
+            {!lines.length ? (
+              <p className="text-sm text-slate-400">No lines yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {lines.map((line, i) => {
+                  const p = products.find((x) => x._id === line.productId);
+                  return (
+                    <div
+                      key={i}
+                      className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm sm:flex-row sm:items-center"
+                    >
+                      <div className="flex-1">
+                        {p ? `${p.name} (${p.sku})` : line.productId}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 sm:justify-end">
+                        <select
+                          value={line.packingType}
+                          onChange={(e) =>
+                            updateLine(i, { packingType: e.target.value as any })
+                          }
+                          className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+                        >
+                          <option value="LOOSE">LOOSE</option>
+                          <option value="KATTA">KATTA</option>
+                          <option value="MASTER">MASTER</option>
+                          <option value="OTHER">OTHER</option>
+                        </select>
+
+                        <input
+                          type="number"
+                          min={1}
+                          className="w-20 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+                          value={line.quantity}
+                          onChange={(e) =>
+                            updateLine(i, { quantity: Number(e.target.value || 0) })
+                          }
+                        />
+
+                        <input
+                          type="number"
+                          min={1}
+                          className="w-24 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+                          value={line.quantityBase}
+                          onChange={(e) =>
+                            updateLine(i, { quantityBase: Number(e.target.value || 0) })
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeLine(i)}
+                          className="rounded-md border border-orange-500 px-2 py-1 text-xs font-semibold text-orange-400 hover:bg-orange-500/10"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              disabled={loading}
+              onClick={handleCreate}
+              className="inline-flex items-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Save GRN
+            </button>
+
+            {createdId && (
+              <button
+                onClick={handleApprove}
+                className="inline-flex items-center rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-400"
+              >
+                Approve + Update
+              </button>
+            )}
+          </div>
+
+          {/* Status */}
+          {msg && <div className="text-sm text-emerald-400">{msg}</div>}
+          {err && <div className="text-sm text-rose-400">{err}</div>}
+
+          {/* Transaction panel */}
+          {createdId && (
+            <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-3 text-sm">
+              <div className="mb-1 font-semibold text-slate-100">Transaction ID</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded bg-slate-950 px-2 py-1 text-xs font-mono">
+                  {createdId}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
+                  onClick={() => navigator.clipboard.writeText(createdId)}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-400"
+                  onClick={resetPage}
+                >
+                  New GRN
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

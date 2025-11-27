@@ -397,8 +397,6 @@ const DispatchPage: React.FC = () => {
                   Copy
                 </button>
 
-            
-
                 <button
                   type="button"
                   onClick={resetDispatch}
