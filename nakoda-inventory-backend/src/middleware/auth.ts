@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { JwtPayload, verifyToken } from "../utils/jwt";
 
 export interface AuthRequest extends Request {
-  user?: JwtPayload;
+  user?: JwtPayload & { warehouses?: string[] };
 }
 
 export function auth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -16,6 +16,10 @@ export function auth(req: AuthRequest, res: Response, next: NextFunction) {
 
   try {
     const payload = verifyToken(token);
+
+    // KEY FIX
+    payload.warehouses = payload.assignedWarehouses || [];
+
     req.user = payload;
     next();
   } catch {

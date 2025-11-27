@@ -1,6 +1,8 @@
+// src/pages/DispatchPage.tsx
 import React, { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface Warehouse {
   id: string;
@@ -21,8 +23,9 @@ interface LineInput {
   quantityBase: number;
 }
 
-export default function DispatchPage() {
+const DispatchPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -39,7 +42,7 @@ export default function DispatchPage() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /** Load warehouses + products */
+  // load warehouses + products
   useEffect(() => {
     async function load() {
       try {
@@ -57,9 +60,11 @@ export default function DispatchPage() {
         setWarehouses(ws);
         setProducts(pRes.data ?? []);
 
-        // Auto-select warehouse for manager or single warehouse
+        // auto-select for manager
         if (user?.warehouses?.length) {
-          const firstMatch = ws.find((x: { id: string; }) => user.warehouses.includes(x.id));
+          const firstMatch = ws.find((x: { id: string }) =>
+            user.warehouses.includes(x.id)
+          );
           if (firstMatch) setWarehouseId(firstMatch.id);
         }
       } catch (e) {
@@ -69,7 +74,20 @@ export default function DispatchPage() {
     load();
   }, [user]);
 
-  /** Product search */
+  // restore last dispatch id
+  useEffect(() => {
+    const saved = localStorage.getItem("current_dispatch_id");
+    if (saved) setCreatedId(saved);
+  }, []);
+
+  // persist dispatch id
+  useEffect(() => {
+    if (createdId) {
+      localStorage.setItem("current_dispatch_id", createdId);
+    }
+  }, [createdId]);
+
+  // search products
   async function handleSearch() {
     if (!search.trim()) {
       setSearchResult([]);
@@ -83,7 +101,7 @@ export default function DispatchPage() {
     }
   }
 
-  /** Add product line */
+  // add line
   function addLine(prod: Product) {
     setLines((prev) => [
       ...prev,
@@ -98,7 +116,7 @@ export default function DispatchPage() {
     setSearchResult([]);
   }
 
-  /** Update product line */
+  // update line
   function updateLine(index: number, patch: Partial<LineInput>) {
     setLines((prev) => {
       const next = [...prev];
@@ -107,12 +125,12 @@ export default function DispatchPage() {
     });
   }
 
-  /** Remove product line */
+  // remove line
   function removeLine(index: number) {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  /** Create dispatch */
+  // create dispatch
   async function handleCreate() {
     setErr("");
     setMsg("");
@@ -137,7 +155,7 @@ export default function DispatchPage() {
     }
   }
 
-  /** Approve dispatch */
+  // approve dispatch
   async function handleApprove() {
     if (!createdId) return;
 
@@ -148,6 +166,8 @@ export default function DispatchPage() {
     try {
       const res = await api.post(`/dispatch/${createdId}/approve`);
       setMsg(res.data.message || "Approved");
+      // clear lines but keep createdId for media
+      setLines([]);
     } catch (error: any) {
       setErr(error?.response?.data?.message || "Failed to approve");
     } finally {
@@ -155,49 +175,43 @@ export default function DispatchPage() {
     }
   }
 
+  // reset for new dispatch
+  function resetDispatch() {
+    setCreatedId(null);
+    localStorage.removeItem("current_dispatch_id");
+    setLines([]);
+    setPartyName("");
+    setMsg("");
+    setErr("");
+  }
+
   const safeLines = lines ?? [];
   const safeWarehouses = warehouses ?? [];
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Dispatch (Goods Out)</h1>
+      <h1 className="mb-4 text-xl font-semibold text-slate-100">
+        Dispatch (Goods Out)
+      </h1>
 
       {(!user?.warehouses || user?.warehouses?.length === 0) && (
-        <p style={{ fontSize: 13, color: "#f97316" }}>
+        <p className="mb-3 text-xs text-orange-400">
           This user has no assigned warehouses. Ask super admin to assign.
         </p>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.4fr 1fr",
-          gap: 16,
-          alignItems: "flex-start",
-        }}
-      >
+      <div className="grid gap-4 md:grid-cols-[1.4fr,1fr] items-start">
         {/* Left block */}
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 8,
-            border: "1px solid #1e293b",
-          }}
-        >
-          {/* Warehouse & party */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-100">
+          {/* Warehouse + party */}
+          <div className="mb-3 flex gap-2">
             <select
               value={warehouseId}
               onChange={(e) => setWarehouseId(e.target.value)}
-              style={{
-                flex: 1,
-                padding: 6,
-                borderRadius: 6,
-                border: "1px solid #334155",
-              }}
+              className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="">Select warehouse</option>
-              {(safeWarehouses ?? []).map((w) => (
+              {safeWarehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} ({w.code})
                 </option>
@@ -208,70 +222,42 @@ export default function DispatchPage() {
               placeholder="Party / Customer name"
               value={partyName}
               onChange={(e) => setPartyName(e.target.value)}
-              style={{
-                flex: 1,
-                padding: 6,
-                borderRadius: 6,
-                border: "1px solid #334155",
-              }}
+              className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
           {/* Search */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 14, marginBottom: 4 }}>Add product</div>
-            <div style={{ display: "flex", gap: 8 }}>
+          <div className="mb-3">
+            <div className="mb-1 text-sm text-slate-200">Add product</div>
+            <div className="flex gap-2">
               <input
                 placeholder="Search by name/SKU/alias"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: 6,
-                  borderRadius: 6,
-                  border: "1px solid #334155",
-                }}
+                className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               <button
                 onClick={handleSearch}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: "#3b82f6",
-                  color: "#0f172a",
-                  fontWeight: 600,
-                  fontSize: 13,
-                }}
+                className="rounded-md bg-blue-500 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-blue-400"
               >
                 Search
               </button>
             </div>
 
             {searchResult?.length > 0 && (
-              <div
-                style={{
-                  marginTop: 6,
-                  borderRadius: 6,
-                  border: "1px solid #1e293b",
-                  maxHeight: 160,
-                  overflow: "auto",
-                  background: "#020617",
-                }}
-              >
+              <div className="mt-2 max-h-40 overflow-auto rounded-md border border-slate-800 bg-slate-950 text-xs">
                 {searchResult.map((p) => (
-                  <div
+                  <button
                     key={p._id}
+                    type="button"
                     onClick={() => addLine(p)}
-                    style={{
-                      padding: 6,
-                      borderBottom: "1px solid #1e293b",
-                      cursor: "pointer",
-                      fontSize: 13,
-                    }}
+                    className="flex w-full items-start justify-between border-b border-slate-800 px-3 py-2 text-left hover:bg-slate-900"
                   >
-                    {p.name} ({p.sku})
-                  </div>
+                    <span>{p.name}</span>
+                    <span className="text-[11px] text-slate-400">
+                      {p.sku}
+                    </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -279,119 +265,94 @@ export default function DispatchPage() {
 
           {/* Lines */}
           <div>
-            <div style={{ fontSize: 14, margin: "8px 0" }}>Lines</div>
+            <div className="mb-1 text-sm font-medium text-slate-200">
+              Lines
+            </div>
 
             {safeLines.length === 0 && (
-              <div style={{ fontSize: 13, opacity: 0.7 }}>
+              <div className="text-xs text-slate-400">
                 No lines added yet.
               </div>
             )}
 
-            {safeLines.map((line, idx) => {
-              const product = products.find((p) => p._id === line.productId);
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    marginBottom: 6,
-                  }}
-                >
-                  <div style={{ flex: 2, fontSize: 13 }}>
-                    {product
-                      ? `${product.name} (${product.sku})`
-                      : line.productId}
+            <div className="mt-2 space-y-2">
+              {safeLines.map((line, idx) => {
+                const product = products.find((p) => p._id === line.productId);
+                return (
+                  <div
+                    key={idx}
+                    className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-xs"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {product
+                          ? `${product.name} (${product.sku})`
+                          : line.productId}
+                      </div>
+                    </div>
+
+                    <select
+                      value={line.packingType}
+                      onChange={(e) =>
+                        updateLine(idx, {
+                          packingType: e.target
+                            .value as LineInput["packingType"],
+                        })
+                      }
+                      className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    >
+                      <option value="LOOSE">Loose</option>
+                      <option value="KATTA">Katta</option>
+                      <option value="MASTER">Master</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+
+                    <input
+                      type="number"
+                      min={1}
+                      value={line.quantity}
+                      onChange={(e) =>
+                        updateLine(idx, {
+                          quantity: Number(e.target.value || 0),
+                        })
+                      }
+                      className="w-20 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      placeholder="Qty"
+                    />
+
+                    <input
+                      type="number"
+                      min={1}
+                      value={line.quantityBase}
+                      onChange={(e) =>
+                        updateLine(idx, {
+                          quantityBase: Number(e.target.value || 0),
+                        })
+                      }
+                      className="w-24 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      placeholder="Qty (pcs)"
+                      title="Quantity in base unit (pcs)"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeLine(idx)}
+                      className="rounded-md border border-orange-500 px-2 py-1 text-[11px] text-orange-400 hover:bg-orange-500/10"
+                    >
+                      Remove
+                    </button>
                   </div>
-
-                  <select
-                    value={line.packingType}
-                    onChange={(e) =>
-                      updateLine(idx, {
-                        packingType: e.target.value as LineInput["packingType"],
-                      })
-                    }
-                    style={{
-                      padding: 4,
-                      borderRadius: 6,
-                      border: "1px solid #334155",
-                      fontSize: 13,
-                    }}
-                  >
-                    <option value="LOOSE">Loose</option>
-                    <option value="KATTA">Katta</option>
-                    <option value="MASTER">Master</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-
-                  <input
-                    type="number"
-                    min={1}
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(idx, { quantity: Number(e.target.value || 0) })
-                    }
-                    style={{
-                      width: 80,
-                      padding: 4,
-                      borderRadius: 6,
-                      border: "1px solid #334155",
-                      fontSize: 13,
-                    }}
-                  />
-
-                  <input
-                    type="number"
-                    min={1}
-                    value={line.quantityBase}
-                    onChange={(e) =>
-                      updateLine(idx, {
-                        quantityBase: Number(e.target.value || 0),
-                      })
-                    }
-                    style={{
-                      width: 100,
-                      padding: 4,
-                      borderRadius: 6,
-                      border: "1px solid #334155",
-                      fontSize: 13,
-                    }}
-                    title="Quantity in base unit (pcs)"
-                  />
-
-                  <button
-                    onClick={() => removeLine(idx)}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid #f97316",
-                      background: "transparent",
-                      color: "#f97316",
-                      fontSize: 12,
-                    }}
-                  >
-                    X
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Actions */}
-          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+          <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={handleCreate}
               disabled={loading}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "none",
-                background: "#22c55e",
-                color: "#020617",
-                fontWeight: 600,
-                fontSize: 13,
-              }}
+              className="rounded-md bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Working..." : "Save Dispatch (DRAFT)"}
             </button>
@@ -400,15 +361,7 @@ export default function DispatchPage() {
               <button
                 onClick={handleApprove}
                 disabled={loading}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: "#f97316",
-                  color: "#020617",
-                  fontWeight: 600,
-                  fontSize: 13,
-                }}
+                className="rounded-md bg-orange-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Approve + Deduct Stock
               </button>
@@ -416,38 +369,73 @@ export default function DispatchPage() {
           </div>
 
           {msg && (
-            <div style={{ marginTop: 8, fontSize: 13, color: "#22c55e" }}>
-              {msg}
-            </div>
+            <div className="mt-2 text-xs text-emerald-400">{msg}</div>
           )}
 
           {err && (
-            <div style={{ marginTop: 8, fontSize: 13, color: "#f97316" }}>
-              {err}
+            <div className="mt-2 text-xs text-orange-400">{err}</div>
+          )}
+
+          {/* Transaction ID + media upload */}
+          {createdId && (
+            <div className="mt-4 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-xs">
+              <div className="mb-1 font-semibold text-slate-100">
+                Transaction ID (Dispatch)
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1 font-mono text-[11px] text-slate-100">
+                  {createdId}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    createdId && navigator.clipboard.writeText(createdId)
+                  }
+                  className="rounded-md bg-slate-500 px-2 py-1 text-[11px] font-semibold text-slate-900 hover:bg-slate-400"
+                >
+                  Copy
+                </button>
+
+            
+
+                <button
+                  type="button"
+                  onClick={resetDispatch}
+                  className="rounded-md bg-red-500 px-2 py-1 text-[11px] font-semibold text-slate-50 hover:bg-red-400"
+                >
+                  New dispatch
+                </button>
+              </div>
             </div>
           )}
         </div>
 
         {/* Right Panel - instructions */}
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 8,
-            border: "1px solid #1e293b",
-            fontSize: 13,
-          }}
-        >
-          <strong>How to use:</strong>
-          <ol style={{ paddingLeft: 18, lineHeight: 1.5 }}>
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200">
+          <strong className="block mb-2 text-slate-100">
+            How to use:
+          </strong>
+          <ol className="ml-4 list-decimal space-y-1">
             <li>Select warehouse jahan se maal jayega.</li>
             <li>Enter party/customer name.</li>
             <li>Search product and add lines.</li>
-            <li>Set quantityBase correctly in PCS.</li>
-            <li>Save → Dispatch will be DRAFT.</li>
+            <li>
+              Qty (pcs) = <span className="font-semibold">quantityBase</span>{" "}
+              correctly set in pieces.
+            </li>
+            <li>Save → Dispatch DRAFT banega.</li>
             <li>Approve → Stock OUT hogi from warehouse.</li>
+            <li>
+              Approve ke baad upar Transaction ID se{" "}
+              <span className="font-semibold">Upload media</span> se
+              photo/video attach kar sakte ho.
+            </li>
           </ol>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default DispatchPage;

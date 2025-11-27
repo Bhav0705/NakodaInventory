@@ -24,8 +24,10 @@ interface LineInput {
 
 const TransferPage: React.FC = () => {
   const { user } = useAuth();
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -39,6 +41,7 @@ const TransferPage: React.FC = () => {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ----------------- LOAD DATA -----------------
   useEffect(() => {
     async function load() {
       try {
@@ -48,7 +51,7 @@ const TransferPage: React.FC = () => {
         ]);
 
         const w: Warehouse[] = (wRes.data ?? []).map((wh: any) => ({
-          id: wh.id || wh._id || wh.code, // normalize id so it is always defined
+          id: wh.id || wh._id || wh.code,
           name: wh.name,
           code: wh.code,
         }));
@@ -56,11 +59,9 @@ const TransferPage: React.FC = () => {
         setWarehouses(w);
         setProducts(pRes.data ?? []);
 
-        // auto-select from warehouse based on user access
+        // auto-select "from" warehouse for manager
         if (user?.warehouses?.length) {
-          const first = w.find((wh: Warehouse) =>
-            user.warehouses.includes(wh.id)
-          );
+          const first = w.find((wh) => user.warehouses.includes(wh.id));
           if (first) setFromWarehouseId(first.id);
         }
       } catch (e) {
@@ -70,6 +71,7 @@ const TransferPage: React.FC = () => {
     load();
   }, [user]);
 
+  // ----------------- SEARCH PRODUCT -----------------
   const handleSearch = async () => {
     if (!search.trim()) {
       setResult([]);
@@ -83,6 +85,7 @@ const TransferPage: React.FC = () => {
     }
   };
 
+  // ----------------- LINES HELPERS -----------------
   const addLine = (product: Product) => {
     setLines((prev) => [
       ...prev,
@@ -109,6 +112,7 @@ const TransferPage: React.FC = () => {
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ----------------- CREATE TRANSFER -----------------
   const handleCreate = async () => {
     setErr('');
     setMsg('');
@@ -144,6 +148,7 @@ const TransferPage: React.FC = () => {
     }
   };
 
+  // ----------------- APPROVE TRANSFER -----------------
   const handleApprove = async () => {
     if (!createdId) return;
     setLoading(true);
@@ -159,6 +164,20 @@ const TransferPage: React.FC = () => {
     }
   };
 
+  // ----------------- OPTIONS (IMPORTANT CHANGE) -----------------
+  const assignedIds = user?.warehouses ?? [];
+
+  const fromOptions: Warehouse[] =
+    user?.role === 'super_admin'
+      ? warehouses
+      : warehouses.filter((w) => assignedIds.includes(w.id));
+
+  // To warehouse: allow ANY other warehouse (only exclude currently selected fromWarehouse)
+  const toOptions: Warehouse[] = warehouses.filter(
+    (w) => w.id !== fromWarehouseId
+  );
+
+  // ----------------- UI -----------------
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold text-slate-100">
@@ -172,8 +191,9 @@ const TransferPage: React.FC = () => {
       )}
 
       <div className="grid items-start gap-4 md:grid-cols-[1.4fr,1fr]">
-        {/* Left: main transfer form */}
+        {/* LEFT FORM */}
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
+          {/* From / To */}
           <div className="mb-3 grid gap-3 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-slate-300">
@@ -181,17 +201,24 @@ const TransferPage: React.FC = () => {
               </label>
               <select
                 value={fromWarehouseId}
-                onChange={(e) => setFromWarehouseId(e.target.value)}
+                onChange={(e) => {
+                  setFromWarehouseId(e.target.value);
+                  // reset "to" if it becomes same
+                  if (e.target.value === toWarehouseId) {
+                    setToWarehouseId('');
+                  }
+                }}
                 className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">Select warehouse</option>
-                {warehouses.map((w) => (
+                {fromOptions.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.name} ({w.code})
                   </option>
                 ))}
               </select>
             </div>
+
             <div>
               <label className="mb-1 block text-xs text-slate-300">
                 To Warehouse (stock yahan jayega)
@@ -202,7 +229,7 @@ const TransferPage: React.FC = () => {
                 className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">Select warehouse</option>
-                {warehouses.map((w) => (
+                {toOptions.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.name} ({w.code})
                   </option>
@@ -211,6 +238,7 @@ const TransferPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Remarks */}
           <div className="mb-3">
             <label className="mb-1 block text-xs text-slate-300">
               Remarks (optional)
@@ -363,7 +391,7 @@ const TransferPage: React.FC = () => {
           {err && <div className="mt-2 text-xs text-orange-400">{err}</div>}
         </div>
 
-        {/* Right: help/explanation */}
+        {/* RIGHT HELP PANEL */}
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-slate-200">
           <div className="mb-2 font-semibold text-slate-100">
             How Warehouse Transfer Works

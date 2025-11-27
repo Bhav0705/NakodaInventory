@@ -10,11 +10,14 @@ import { AuthRequest } from '../middleware/auth';
 export async function registerSuperAdmin(req: Request, res: Response) {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password)
+  if (!name || !email || !password) {
     return res.status(400).json({ message: 'name, email, password required' });
+  }
 
   const existing = await User.findOne({ email });
-  if (existing) return res.status(400).json({ message: 'Email already in use' });
+  if (existing) {
+    return res.status(400).json({ message: 'Email already in use' });
+  }
 
   const hashed = await hashPassword(password);
 
@@ -23,13 +26,16 @@ export async function registerSuperAdmin(req: Request, res: Response) {
     email,
     password: hashed,
     role: 'super_admin',
-    assignedWarehouses: []
+    assignedWarehouses: [],
   });
+
+  const assignedIds: string[] = [];
 
   const token = signToken({
     id: user._id.toString(),
     role: user.role,
-    assignedWarehouses: []
+    assignedWarehouses: assignedIds,
+    warehouses: assignedIds, // mirror
   });
 
   res.json({
@@ -39,8 +45,9 @@ export async function registerSuperAdmin(req: Request, res: Response) {
       name: user.name,
       email: user.email,
       role: user.role,
-      assignedWarehouses: []
-    }
+      assignedWarehouses: assignedIds,
+      warehouses: assignedIds,
+    },
   });
 }
 
@@ -50,21 +57,28 @@ export async function registerSuperAdmin(req: Request, res: Response) {
 export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email, status: 'active' })
-    .populate('assignedWarehouses');
+  const user = await User.findOne({ email, status: 'active' }).populate(
+    'assignedWarehouses'
+  );
 
-  if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid credentials' });
+  }
 
   const ok = await comparePassword(password, user.password);
-  if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
+  if (!ok) {
+    return res.status(400).json({ message: 'Invalid credentials' });
+  }
 
-  const assignedIds = (user.assignedWarehouses as any[])
-    .map(w => w._id.toString());
+  const assignedIds: string[] = (user.assignedWarehouses as any[]).map((w) =>
+    w._id.toString()
+  );
 
   const token = signToken({
     id: user._id.toString(),
     role: user.role,
-    assignedWarehouses: assignedIds
+    assignedWarehouses: assignedIds,
+    warehouses: assignedIds, // alias for convenience
   });
 
   res.json({
@@ -74,8 +88,9 @@ export async function login(req: Request, res: Response) {
       name: user.name,
       email: user.email,
       role: user.role,
-      assignedWarehouses: assignedIds
-    }
+      assignedWarehouses: assignedIds,
+      warehouses: assignedIds,
+    },
   });
 }
 
@@ -83,21 +98,26 @@ export async function login(req: Request, res: Response) {
   ME
 ----------------------------- */
 export async function me(req: AuthRequest, res: Response) {
-  if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
 
-  const data = await User.findById(req.user.id)
-    .populate('assignedWarehouses');
+  const data = await User.findById(req.user.id).populate('assignedWarehouses');
 
-  if (!data) return res.status(404).json({ message: 'User not found' });
+  if (!data) {
+    return res.status(404).json({ message: 'User not found' });
+  }
 
-  const assigned = (data.assignedWarehouses as any[])
-    .map(w => w._id.toString());
+  const assigned: string[] = (data.assignedWarehouses as any[]).map((w) =>
+    w._id.toString()
+  );
 
   res.json({
     id: data._id,
     name: data.name,
     email: data.email,
     role: data.role,
-    assignedWarehouses: assigned
+    assignedWarehouses: assigned,
+    warehouses: assigned, // keep both for frontend
   });
 }

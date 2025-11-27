@@ -6,6 +6,8 @@ export interface JwtPayload {
   id: string;
   role: string;
   assignedWarehouses: string[];
+  // add this line ↓
+  warehouses?: string[];   // derived at runtime from assignedWarehouses
 }
 
 export function signToken(payload: JwtPayload) {

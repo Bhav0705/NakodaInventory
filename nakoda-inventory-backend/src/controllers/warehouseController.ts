@@ -1,41 +1,51 @@
+
 // src/controllers/warehouseController.ts
 import { Request, Response } from 'express';
 import Warehouse from '../models/Warehouse';
 
 interface AuthUser {
   id: string;
-  role: 'super_admin' | 'warehouse_admin' | 'warehouse_manager' | 'viewer';
-  assignedWarehouses: string[];
+  role: string;
+  assignedWarehouses?: string[];
+  warehouses?: string[];
 }
 
-/* -----------------------------
-  LIST WAREHOUSES
------------------------------ */
 export async function listWarehouses(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;
-    if (!user) return res.status(401).json({ message: 'Unauthenticated' });
+    if (!user) return res.status(401).json({ message: "Unauthenticated" });
 
-    let filter: any = {};
+    const filter: any = {};
 
-    if (user.role !== 'super_admin') {
-      filter._id = { $in: user.assignedWarehouses || [] };
+    // ⭐ Super admin -> see ALL warehouses
+    if (user.role !== "super_admin") {
+      // Prefer runtime derived warehouses
+      const allowed = user.warehouses?.length
+        ? user.warehouses
+        : user.assignedWarehouses?.length
+        ? user.assignedWarehouses
+        : [];
+
+      if (!allowed.length) return res.json([]); // no permissions
+
+      filter._id = { $in: allowed };
     }
 
-    const list = await Warehouse.find(filter).sort({ name: 1 });
+    const docs = await Warehouse.find(filter).sort({ name: 1 });
 
     res.json(
-      list.map((w) => ({
-        id: w._id,
+      docs.map(w => ({
+        id: w._id.toString(),
         name: w.name,
         code: w.code,
         address: w.address,
-        status: w.status,
+        status: w.status
       }))
     );
+
   } catch (error) {
-    console.error('listWarehouses error', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("listWarehouses error", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
