@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'path';
 import fs from 'fs';
 
 import { config } from './config/env';
@@ -18,6 +17,8 @@ import dispatchRoutes from './routes/dispatchRoutes';
 import mediaRoutes from './routes/mediaRoutes';
 import userRoutes from './routes/userRoutes';
 import transferRoutes from './routes/transferRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
+
 async function start() {
   await connectDatabase();
 
@@ -31,7 +32,7 @@ async function start() {
   app.use(
     cors({
       origin: config.corsOrigin,
-      credentials: true
+      credentials: true,
     })
   );
   app.use(morgan('dev'));
@@ -41,7 +42,7 @@ async function start() {
   app.use(
     '/inventory-media',
     express.static(config.inventoryMediaRoot, {
-      fallthrough: false
+      fallthrough: false,
     })
   );
 
@@ -56,8 +57,12 @@ async function start() {
   app.use('/api/grn', grnRoutes);
   app.use('/api/dispatch', dispatchRoutes);
   app.use('/api/inventory-media', mediaRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/transfer', transferRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/transfer', transferRoutes);
+
+  // ✅ sirf yahan ek baar
+  app.use('/api/dashboard', dashboardRoutes);
+
   app.use(errorHandler);
 
   app.listen(config.port, () => {
