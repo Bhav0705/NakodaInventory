@@ -7,7 +7,7 @@ interface Product {
   name: string;
   sku: string;
   category?: string;
-  baseUnit: string;
+  baseUnit: 'PCS';   // always PCS in your new system
   status: string;
 }
 
@@ -39,7 +39,8 @@ const ProductsPage: React.FC = () => {
     e.preventDefault();
     setErr('');
     try {
-      await api.post('/products', { name, sku, category, baseUnit: 'PCS' });
+      // backend now always sets baseUnit = 'PCS'
+      await api.post('/products', { name, sku, category });
       setName('');
       setSku('');
       setCategory('');

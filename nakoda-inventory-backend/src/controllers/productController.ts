@@ -9,33 +9,75 @@ export async function listProducts(_req: Request, res: Response) {
 }
 
 export async function createProduct(req: Request, res: Response) {
-  const { name, sku, category, baseUnit } = req.body;
-  if (!name || !sku) return res.status(400).json({ message: 'name and sku required' });
+  const { name, sku, category } = req.body;
+
+  if (!name || !sku) {
+    return res.status(400).json({ message: 'name and sku required' });
+  }
+
   const existing = await Product.findOne({ sku });
-  if (existing) return res.status(400).json({ message: 'SKU already exists' });
-  const product = await Product.create({ name, sku, category, baseUnit: baseUnit || 'PCS' });
+  if (existing) {
+    return res.status(400).json({ message: 'SKU already exists' });
+  }
+
+  // baseUnit is always PCS in your new model
+  const product = await Product.create({
+    name,
+    sku,
+    category,
+    baseUnit: 'PCS'
+  });
+
+  // ensure a single default packing row for this product (PIECE → PCS, conversion 1)
+  await ProductPacking.findOneAndUpdate(
+    { productId: product._id },
+    {
+      type: 'PIECE',
+      unitName: 'PCS',
+      conversionToBase: 1,
+      isDefault: true
+    },
+    { upsert: true, new: true }
+  );
+
   res.json(product);
 }
 
 export async function addAlias(req: Request, res: Response) {
   const { productId, alias } = req.body;
-  if (!productId || !alias) return res.status(400).json({ message: 'productId and alias required' });
-  const aliasDoc = await ProductAlias.create({ productId, alias, priority: 100 });
+  if (!productId || !alias) {
+    return res.status(400).json({ message: 'productId and alias required' });
+  }
+
+  const aliasDoc = await ProductAlias.create({
+    productId,
+    alias,
+    priority: 100
+  });
+
   res.json(aliasDoc);
 }
 
+
 export async function addPacking(req: Request, res: Response) {
-  const { productId, type, unitName, conversionToBase, isDefault } = req.body;
-  if (!productId || !type || !unitName || !conversionToBase) {
-    return res.status(400).json({ message: 'missing fields' });
+  const { productId, unitName } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ message: 'productId required' });
   }
-  const packing = await ProductPacking.create({
-    productId,
-    type,
-    unitName,
-    conversionToBase,
-    isDefault: !!isDefault
-  });
+
+  // Optional: allow changing display name; default is "PCS"
+  const packing = await ProductPacking.findOneAndUpdate(
+    { productId },
+    {
+      type: 'PIECE',
+      unitName: unitName || 'PCS',
+      conversionToBase: 1,
+      isDefault: true
+    },
+    { upsert: true, new: true }
+  );
+
   res.json(packing);
 }
 
@@ -43,8 +85,9 @@ export async function searchProducts(req: Request, res: Response) {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json([]);
 
-  // search by SKU / name first
   const regex = new RegExp(q, 'i');
+
+  // search by SKU / name first
   let products = await Product.find({
     $or: [{ sku: regex }, { name: regex }]
   }).limit(20);

@@ -5,7 +5,19 @@ import { inventoryMediaUpload } from '../middleware/inventoryMediaUpload';
 
 const router = Router();
 
-router.post('/', auth, inventoryMediaUpload.array('files', 10), uploadMedia);
-router.get('/', auth, listMedia);
+// Upload
+router.post(
+  '/upload',
+  auth,
+  inventoryMediaUpload.array('files', 10),
+  uploadMedia
+);
+
+// List
+router.get(
+  '/list',
+  auth,
+  listMedia
+);
 
 export default router;

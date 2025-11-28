@@ -2,9 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGRNLine {
   productId: mongoose.Types.ObjectId;
-  packingType: 'LOOSE' | 'KATTA' | 'MASTER' | 'OTHER';
-  quantity: number;
-  quantityBase: number;
+  quantity: number;          // pieces
   purchasePrice?: number;
 }
 
@@ -22,9 +20,10 @@ export interface IGRN extends Document {
 const GRNLineSchema = new Schema<IGRNLine>(
   {
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    packingType: { type: String, enum: ['LOOSE', 'KATTA', 'MASTER', 'OTHER'], required: true },
-    quantity: { type: Number, required: true },
-    quantityBase: { type: Number, required: true },
+
+    // direct pieces quantity
+    quantity: { type: Number, required: true, min: 1 },
+
     purchasePrice: Number
   },
   { _id: false }
@@ -36,7 +35,11 @@ const GRNSchema = new Schema<IGRN>(
     supplierName: String,
     supplierInvoiceNo: String,
     invoiceDate: Date,
-    status: { type: String, enum: ['DRAFT', 'SUBMITTED', 'APPROVED'], default: 'DRAFT' },
+    status: {
+      type: String,
+      enum: ['DRAFT', 'SUBMITTED', 'APPROVED'],
+      default: 'DRAFT'
+    },
     lines: [GRNLineSchema],
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     approvedBy: { type: Schema.Types.ObjectId, ref: 'User' }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -6,18 +6,34 @@ import { api } from '../services/api';
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  // for first admin
+  // for first super admin
   const [adminEmail, setAdminEmail] = useState('');
   const [adminName, setAdminName] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminMsg, setAdminMsg] = useState('');
   const [adminErr, setAdminErr] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
+
+  // check if super admin already exists
+  const [hasSuperAdmin, setHasSuperAdmin] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/auth/has-super-admin');
+        setHasSuperAdmin(res.data?.hasSuperAdmin ?? true);
+      } catch (e) {
+        // if API fails, be safe: assume super admin exists => hide form
+        setHasSuperAdmin(true);
+      }
+    })();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,10 +61,12 @@ const LoginPage: React.FC = () => {
         password: adminPassword,
       });
       setAdminMsg('Super admin created. Now login with this email & password.');
-      // optional: prefill login form
+      // prefill login form
       setEmail(adminEmail);
       setPassword(adminPassword);
       console.log('Created super admin:', res.data.user);
+      // mark as exists so next reload will hide this form
+      setHasSuperAdmin(true);
     } catch (error: any) {
       setAdminErr(error?.response?.data?.message || 'Failed to create super admin');
     } finally {
@@ -105,75 +123,77 @@ const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* One-time super admin creator */}
-        <form
-          onSubmit={handleCreateSuperAdmin}
-          className="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-6 py-6 shadow-lg"
-        >
-          <h2 className="mb-3 text-sm font-semibold text-slate-100">
-            First time setup – Create Super Admin
-          </h2>
-          <p className="mb-4 text-xs text-slate-400">
-            Run this only once to create your first admin. After that, use the login form on the left.
-          </p>
-
-          <div className="mb-2">
-            <label className="mb-1 block text-xs font-medium text-slate-300">
-              Name
-            </label>
-            <input
-              type="text"
-              value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="e.g. Bhavesh"
-            />
-          </div>
-
-          <div className="mb-2">
-            <label className="mb-1 block text-xs font-medium text-slate-300">
-              Admin Email
-            </label>
-            <input
-              type="email"
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="admin@nakoda.com"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="mb-1 block text-xs font-medium text-slate-300">
-              Admin Password
-            </label>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-
-          {adminErr && (
-            <div className="mb-2 text-xs text-orange-400">
-              {adminErr}
-            </div>
-          )}
-          {adminMsg && (
-            <div className="mb-2 text-xs text-emerald-400">
-              {adminMsg}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={adminLoading}
-            className="mt-2 w-full rounded-md bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+        {/* One-time super admin creator – visible only when no super_admin exists */}
+        {hasSuperAdmin === false && (
+          <form
+            onSubmit={handleCreateSuperAdmin}
+            className="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-6 py-6 shadow-lg"
           >
-            {adminLoading ? 'Creating...' : 'Create Super Admin'}
-          </button>
-        </form>
+            <h2 className="mb-3 text-sm font-semibold text-slate-100">
+              First time setup – Create Super Admin
+            </h2>
+            <p className="mb-4 text-xs text-slate-400">
+              Run this only once to create your first admin. After that, use the login form on the left.
+            </p>
+
+            <div className="mb-2">
+              <label className="mb-1 block text-xs font-medium text-slate-300">
+                Name
+              </label>
+              <input
+                type="text"
+                value={adminName}
+                onChange={(e) => setAdminName(e.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. Bhavesh"
+              />
+            </div>
+
+            <div className="mb-2">
+              <label className="mb-1 block text-xs font-medium text-slate-300">
+                Admin Email
+              </label>
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="admin@nakoda.com"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="mb-1 block text-xs font-medium text-slate-300">
+                Admin Password
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+
+            {adminErr && (
+              <div className="mb-2 text-xs text-orange-400">
+                {adminErr}
+              </div>
+            )}
+            {adminMsg && (
+              <div className="mb-2 text-xs text-emerald-400">
+                {adminMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={adminLoading}
+              className="mt-2 w-full rounded-md bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {adminLoading ? 'Creating...' : 'Create Super Admin'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

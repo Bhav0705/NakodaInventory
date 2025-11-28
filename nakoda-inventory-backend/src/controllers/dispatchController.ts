@@ -21,10 +21,7 @@ function ensureWarehouseAccess(user: AuthUser, warehouseId: any) {
   throw err;
 }
 
-/**
- * POST /api/dispatch
- * Body: { warehouseId, partyName?, dispatchType?, lines: [{ productId, packingType, quantity, quantityBase }] }
- */
+
 export async function createDispatch(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;
@@ -48,29 +45,36 @@ export async function createDispatch(req: Request, res: Response) {
 
     const normalizedLines: {
       productId: string;
-      packingType: 'LOOSE' | 'KATTA' | 'MASTER' | 'OTHER';
-      quantity: number;
-      quantityBase: number;
+      quantity: number;        // pieces
+      sellingPrice?: number;
     }[] = [];
 
     for (const line of lines) {
-      if (!line.productId || !line.quantityBase) {
+      if (!line.productId || line.quantity == null) {
         return res
           .status(400)
-          .json({ message: 'Each line must have productId and quantityBase' });
+          .json({ message: 'Each line must have productId and quantity' });
       }
+
+      const qty = Number(line.quantity);
+      if (!qty || qty <= 0) {
+        return res
+          .status(400)
+          .json({ message: 'Line quantity must be a positive number (pieces)' });
+      }
+
       const product = await Product.findById(line.productId);
       if (!product) {
         return res.status(400).json({
-          message: `Invalid productId in lines: ${line.productId}`,
+          message: `Invalid productId in lines: ${line.productId}`
         });
       }
 
       normalizedLines.push({
         productId: line.productId,
-        packingType: line.packingType || 'LOOSE',
-        quantity: Number(line.quantity || line.quantityBase),
-        quantityBase: Number(line.quantityBase),
+        quantity: qty,
+        sellingPrice:
+          line.sellingPrice != null ? Number(line.sellingPrice) : undefined
       });
     }
 
@@ -80,7 +84,7 @@ export async function createDispatch(req: Request, res: Response) {
       dispatchType: dispatchType || 'SALE',
       lines: normalizedLines,
       status: 'DRAFT',
-      createdBy: user.id,
+      createdBy: user.id
     });
 
     res.json(dispatch);
@@ -95,9 +99,8 @@ export async function createDispatch(req: Request, res: Response) {
 
 /**
  * POST /api/dispatch/:id/approve
+ * Approves dispatch, validates stock, deducts pieces, creates OUT stock movements.
  */
-// src/controllers/dispatchController.ts
-
 export async function approveDispatch(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;
@@ -105,9 +108,10 @@ export async function approveDispatch(req: Request, res: Response) {
 
     const { id } = req.params;
     const dispatchDoc = await Dispatch.findById(id);
-    if (!dispatchDoc) return res.status(404).json({ message: 'Dispatch not found' });
+    if (!dispatchDoc)
+      return res.status(404).json({ message: 'Dispatch not found' });
 
-    const dispatch: any = dispatchDoc; // easier access
+    const dispatch: any = dispatchDoc;
     ensureWarehouseAccess(user, dispatch.warehouseId);
 
     if (dispatch.status === 'APPROVED') {
@@ -116,36 +120,33 @@ export async function approveDispatch(req: Request, res: Response) {
 
     const partyName = dispatch.partyName || '';
 
-    // 1) validate stock for each line
+    // 1) validate stock for each line (all in pieces)
     for (const line of dispatch.lines) {
-      const qty = Number((line as any).quantityBase || 0);
+      const qty = Number((line as any).quantity || 0);
       if (!qty || qty <= 0) continue;
 
       const level = await StockLevel.findOne({
         warehouseId: dispatch.warehouseId,
-        productId: line.productId,
+        productId: line.productId
       });
 
       const available = level?.quantity || 0;
       if (available < qty) {
         return res.status(400).json({
-          message: `Insufficient stock for product in this warehouse (need ${qty}, have ${available})`,
+          message: `Insufficient stock for product in this warehouse (need ${qty}, have ${available})`
         });
       }
     }
 
     // 2) deduct stock + create OUT movement
     for (const line of dispatch.lines) {
-      const qty = Number((line as any).quantityBase || 0);
+      const qty = Number((line as any).quantity || 0);
       if (!qty || qty <= 0) continue;
-
-      const packingType =
-        (line as any).packingType || 'LOOSE'; // <- ensure we always have packingType
 
       const level = await StockLevel.findOneAndUpdate(
         {
           warehouseId: dispatch.warehouseId,
-          productId: line.productId,
+          productId: line.productId
         },
         { $inc: { quantity: -qty } },
         { new: true }
@@ -153,13 +154,13 @@ export async function approveDispatch(req: Request, res: Response) {
 
       if (!level || level.quantity < 0) {
         return res.status(500).json({
-          message: 'Stock level went negative for dispatch. Aborting.',
+          message: 'Stock level went negative for dispatch. Aborting.'
         });
       }
 
       const notesParts = [
         'Dispatch approval',
-        partyName && `Party: ${partyName}`,
+        partyName && `Party: ${partyName}`
       ].filter(Boolean);
       const notes = notesParts.join(' | ');
 
@@ -167,13 +168,12 @@ export async function approveDispatch(req: Request, res: Response) {
         productId: line.productId,
         warehouseId: dispatch.warehouseId,
         direction: 'OUT',
-        packingType,          // <- REQUIRED BY SCHEMA
-        quantityBase: qty,    // if schema uses `quantity` instead, change to `quantity: qty`
+        quantityBase: qty,            // pieces
         transactionType: 'DISPATCH',
         transactionId: dispatch._id,
         notes,
         createdBy: user.id,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
     }
 
@@ -192,10 +192,9 @@ export async function approveDispatch(req: Request, res: Response) {
   }
 }
 
-
 /**
- * OPTIONAL: list dispatch documents filtered by user’s warehouses
  * GET /api/dispatch
+ * List dispatch documents filtered by user’s warehouses.
  */
 export async function listDispatch(req: Request, res: Response) {
   try {

@@ -2,9 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IDispatchLine {
   productId: mongoose.Types.ObjectId;
-  packingType: 'LOOSE' | 'KATTA' | 'MASTER' | 'OTHER';
-  quantity: number;
-  quantityBase: number;
+  quantity: number;         // pieces
   sellingPrice?: number;
 }
 
@@ -21,9 +19,10 @@ export interface IDispatch extends Document {
 const DispatchLineSchema = new Schema<IDispatchLine>(
   {
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    packingType: { type: String, enum: ['LOOSE', 'KATTA', 'MASTER', 'OTHER'], required: true },
-    quantity: { type: Number, required: true },
-    quantityBase: { type: Number, required: true },
+
+    // quantity is now directly in pieces
+    quantity: { type: Number, required: true, min: 1 },
+
     sellingPrice: Number
   },
   { _id: false }

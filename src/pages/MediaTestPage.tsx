@@ -53,7 +53,7 @@ const MediaUploadPage: React.FC = () => {
     load();
   }, [user]);
 
-  const handleUpload = async () => {
+    const handleUpload = async () => {
     if (!transactionId) {
       setErr("Transaction ID required");
       return;
@@ -70,23 +70,23 @@ const MediaUploadPage: React.FC = () => {
     setErr("");
     setMsg("");
 
-    try {
-      const form = new FormData();
-      form.append("transactionType", transactionType);
-      form.append("transactionId", transactionId);
-      form.append("direction", direction);
-      form.append("warehouseId", warehouseId);
-      Array.from(files).forEach((f) => form.append("files", f));
+try {
+  const form = new FormData();
+  form.append("transactionType", transactionType);
+  form.append("transactionId", transactionId);
+  form.append("direction", direction);
+  form.append("warehouseId", warehouseId);
+  Array.from(files).forEach((f) => form.append("files", f));
 
-      const res = await api.post("/inventory-media", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+  // ✅ correct endpoint
+  const res = await api.post("/inventory-media/upload", form);
 
-      setMsg(`Uploaded: ${res.data.media?.length || 0} file(s)`);
-    } catch (error: any) {
-      setErr(error?.response?.data?.message || "Upload failed");
-    }
+  setMsg(`Uploaded: ${res.data.media?.length || 0} file(s)`);
+} catch (error: any) {
+  setErr(error?.response?.data?.message || "Upload failed");
+}
   };
+
 
   return (
     <div className="text-slate-100 p-6 max-w-xl mx-auto">

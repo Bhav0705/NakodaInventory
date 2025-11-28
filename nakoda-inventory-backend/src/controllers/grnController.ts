@@ -23,14 +23,33 @@ function ensureWarehouseAccess(user: AuthUser, warehouseId: any) {
 
 /**
  * POST /api/grn
- * Body: { warehouseId, supplierName?, supplierInvoiceNo?, lines: [{ productId, packingType, quantity, quantityBase }] }
+ * Body:
+ * {
+ *   warehouseId,
+ *   supplierName?,
+ *   supplierInvoiceNo?,
+ *   invoiceDate?,
+ *   lines: [
+ *     {
+ *       productId,
+ *       quantity,         // pieces
+ *       purchasePrice?    // per piece or per unit you decide
+ *     }
+ *   ]
+ * }
  */
 export async function createGRN(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;
     if (!user) return res.status(401).json({ message: 'Unauthenticated' });
 
-    const { warehouseId, supplierName, supplierInvoiceNo, lines } = req.body || {};
+    const {
+      warehouseId,
+      supplierName,
+      supplierInvoiceNo,
+      invoiceDate,
+      lines
+    } = req.body || {};
 
     if (!warehouseId) {
       return res.status(400).json({ message: 'warehouseId required' });
@@ -50,29 +69,35 @@ export async function createGRN(req: Request, res: Response) {
 
     const normalizedLines: {
       productId: string;
-      packingType: 'LOOSE' | 'KATTA' | 'MASTER' | 'OTHER';
-      quantity: number;
-      quantityBase: number;
+      quantity: number;        // pieces
+      purchasePrice?: number;
     }[] = [];
 
     for (const line of lines) {
-      if (!line.productId || !line.quantityBase) {
+      if (!line.productId || line.quantity == null) {
         return res
           .status(400)
-          .json({ message: 'Each line must have productId and quantityBase' });
+          .json({ message: 'Each line must have productId and quantity' });
       }
+
+      const qty = Number(line.quantity);
+      if (!qty || qty <= 0) {
+        return res
+          .status(400)
+          .json({ message: 'Line quantity must be a positive number (pieces)' });
+      }
+
       const product = await Product.findById(line.productId);
       if (!product) {
         return res.status(400).json({
-          message: `Invalid productId in lines: ${line.productId}`,
+          message: `Invalid productId in lines: ${line.productId}`
         });
       }
 
       normalizedLines.push({
         productId: line.productId,
-        packingType: line.packingType || 'LOOSE',
-        quantity: Number(line.quantity || line.quantityBase),
-        quantityBase: Number(line.quantityBase),
+        quantity: qty,
+        purchasePrice: line.purchasePrice != null ? Number(line.purchasePrice) : undefined
       });
     }
 
@@ -80,9 +105,10 @@ export async function createGRN(req: Request, res: Response) {
       warehouseId,
       supplierName,
       supplierInvoiceNo,
+      invoiceDate,
       lines: normalizedLines,
       status: 'DRAFT',
-      createdBy: user.id,
+      createdBy: user.id
     });
 
     res.json(grn);
@@ -97,9 +123,8 @@ export async function createGRN(req: Request, res: Response) {
 
 /**
  * POST /api/grn/:id/approve
+ * Approves GRN and updates stock + stock movements (all in pieces).
  */
-// src/controllers/grnController.ts
-
 export async function approveGRN(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;
@@ -119,18 +144,16 @@ export async function approveGRN(req: Request, res: Response) {
     const supplierName = (grn as any).supplierName || '';
     const supplierInvoiceNo = (grn as any).supplierInvoiceNo || '';
 
-    // IN movement for each line
+    // IN movement for each line (all quantities are in pieces)
     for (const line of grn.lines) {
-      const qty = Number((line as any).quantityBase || 0);
+      const qty = Number((line as any).quantity || 0);
       if (!qty || qty <= 0) continue;
 
-      const packingType = (line as any).packingType || 'LOOSE';
-
-      // Update stock
+      // Update stock level (pieces)
       const level = await StockLevel.findOneAndUpdate(
         {
           warehouseId: grn.warehouseId,
-          productId: line.productId,
+          productId: line.productId
         },
         { $inc: { quantity: qty } },
         { new: true, upsert: true }
@@ -146,23 +169,21 @@ export async function approveGRN(req: Request, res: Response) {
       const notesParts = [
         'GRN approval',
         supplierName && `Supplier: ${supplierName}`,
-        supplierInvoiceNo && `Invoice: ${supplierInvoiceNo}`,
+        supplierInvoiceNo && `Invoice: ${supplierInvoiceNo}`
       ].filter(Boolean);
       const notes = notesParts.join(' | ');
 
-      // Stock movement
+      // Stock movement (pieces only, no packingType)
       await StockMovement.create({
         productId: line.productId,
         warehouseId: grn.warehouseId,
         direction: 'IN',
-        packingType,
-        quantityBase: qty,
-        // quantity: qty, // use this if your schema uses `quantity` instead of `quantityBase`
+        quantityBase: qty,           // pieces
         transactionType: 'GRN',
         transactionId: grn._id,
-        notes,                // ← supplier visible in ledger
+        notes,
         createdBy: user.id,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
     }
 
@@ -182,10 +203,6 @@ export async function approveGRN(req: Request, res: Response) {
 }
 
 
-/**
- * OPTIONAL: list GRNs filtered by user’s warehouses
- * GET /api/grn
- */
 export async function listGRN(req: Request, res: Response) {
   try {
     const user = req.user as AuthUser | undefined;

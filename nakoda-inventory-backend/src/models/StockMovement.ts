@@ -14,8 +14,7 @@ export interface IStockMovement extends Document {
   direction: 'IN' | 'OUT';
   warehouseId: mongoose.Types.ObjectId;
   productId: mongoose.Types.ObjectId;
-  quantityBase: number;
-  packingType: 'LOOSE' | 'KATTA' | 'MASTER' | 'OTHER';
+  quantityBase: number; // always pieces
   createdBy: mongoose.Types.ObjectId;
   approvedBy?: mongoose.Types.ObjectId;
   timestamp: Date;
@@ -29,8 +28,11 @@ const StockMovementSchema = new Schema<IStockMovement>(
     direction: { type: String, enum: ['IN', 'OUT'], required: true },
     warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantityBase: { type: Number, required: true },
-    packingType: { type: String, enum: ['LOOSE', 'KATTA', 'MASTER', 'OTHER'], required: true },
+
+    // Always store in pieces
+    quantityBase: { type: Number, required: true, min: 1 },
+
+    // packingType removed
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     timestamp: { type: Date, default: Date.now },

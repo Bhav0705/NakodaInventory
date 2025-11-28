@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-
+import { getMediaUrl } from '../config/media';
 interface Warehouse {
   id: string;
   name: string;
@@ -18,9 +18,7 @@ interface Product {
 
 interface LineInput {
   productId: string;
-  packingType: "LOOSE" | "KATTA" | "MASTER" | "OTHER";
-  quantity: number;
-  quantityBase: number;
+  quantity: number; // pieces only
 }
 
 const DispatchPage: React.FC = () => {
@@ -41,6 +39,12 @@ const DispatchPage: React.FC = () => {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+const [uploading, setUploading] = useState(false);
+const [uploadMsg, setUploadMsg] = useState("");
+const [uploadErr, setUploadErr] = useState("");
+
+const [mediaList, setMediaList] = useState<any[]>([]);
 
   // load warehouses + products
   useEffect(() => {
@@ -101,17 +105,24 @@ const DispatchPage: React.FC = () => {
     }
   }
 
-  // add line
+  // add line (merge by product: increment quantity if already added)
   function addLine(prod: Product) {
-    setLines((prev) => [
-      ...prev,
-      {
-        productId: prod._id,
-        packingType: "LOOSE",
-        quantity: 1,
-        quantityBase: 1,
-      },
-    ]);
+    setLines((prev) => {
+      const existing = prev.find((l) => l.productId === prod._id);
+      if (existing) {
+        return prev.map((l) =>
+          l.productId === prod._id ? { ...l, quantity: l.quantity + 1 } : l
+        );
+      }
+      return [
+        ...prev,
+        {
+          productId: prod._id,
+          quantity: 1, // 1 piece by default
+        },
+      ];
+    });
+
     setSearch("");
     setSearchResult([]);
   }
@@ -138,13 +149,18 @@ const DispatchPage: React.FC = () => {
     if (!warehouseId) return setErr("Select warehouse");
     if (lines.length === 0) return setErr("Add at least one product");
 
+    // validate quantities > 0
+    if (lines.some((l) => !l.quantity || l.quantity <= 0)) {
+      return setErr("All quantities must be positive (in pieces)");
+    }
+
     setLoading(true);
     try {
       const res = await api.post("/dispatch", {
         warehouseId,
         partyName,
         dispatchType: "SALE",
-        lines,
+        lines, // [{ productId, quantity }]
       });
       setCreatedId(res.data._id);
       setMsg("Dispatch created (DRAFT). Approve to deduct stock.");
@@ -174,6 +190,24 @@ const DispatchPage: React.FC = () => {
       setLoading(false);
     }
   }
+
+  async function loadMediaForDispatch() {
+  if (!createdId) return;
+
+  try {
+   const res = await api.get("/inventory-media/list", {
+  params: {
+    transactionType: "DISPATCH",
+    transactionId: createdId,
+  },
+});
+
+    setMediaList(res.data ?? []);
+  } catch (e) {
+    console.error("Media list error:", e);
+  }
+}
+
 
   // reset for new dispatch
   function resetDispatch() {
@@ -291,48 +325,23 @@ const DispatchPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <select
-                      value={line.packingType}
-                      onChange={(e) =>
-                        updateLine(idx, {
-                          packingType: e.target
-                            .value as LineInput["packingType"],
-                        })
-                      }
-                      className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                    >
-                      <option value="LOOSE">Loose</option>
-                      <option value="KATTA">Katta</option>
-                      <option value="MASTER">Master</option>
-                      <option value="OTHER">Other</option>
-                    </select>
-
-                    <input
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(e) =>
-                        updateLine(idx, {
-                          quantity: Number(e.target.value || 0),
-                        })
-                      }
-                      className="w-20 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                      placeholder="Qty"
-                    />
-
-                    <input
-                      type="number"
-                      min={1}
-                      value={line.quantityBase}
-                      onChange={(e) =>
-                        updateLine(idx, {
-                          quantityBase: Number(e.target.value || 0),
-                        })
-                      }
-                      className="w-24 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                      placeholder="Qty (pcs)"
-                      title="Quantity in base unit (pcs)"
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-slate-400">
+                        Qty (pcs)
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.quantity}
+                        onChange={(e) =>
+                          updateLine(idx, {
+                            quantity: Number(e.target.value || 0),
+                          })
+                        }
+                        className="w-24 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        placeholder="Qty"
+                      />
+                    </div>
 
                     <button
                       type="button"
@@ -407,6 +416,113 @@ const DispatchPage: React.FC = () => {
               </div>
             </div>
           )}
+
+
+          {createdId && (
+  <div className="mt-4 space-y-3 rounded-md border border-slate-700 bg-slate-950 p-4 text-xs">
+    <div className="flex items-center justify-between">
+      <div className="font-semibold text-slate-100">
+        Attach Dispatch Media (Images/Videos)
+      </div>
+    </div>
+
+    {/* File Input */}
+    <div className="flex flex-col gap-2">
+      <input
+        multiple
+        type="file"
+        accept="image/*,video/*"
+        onChange={(e) => {
+          const list = e.target.files;
+          if (!list || list.length === 0) return;
+          setUploadFiles(Array.from(list));
+        }}
+        className="block w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+      />
+
+      <button
+        disabled={!uploadFiles || uploadFiles.length === 0 || uploading}
+        onClick={async () => {
+          try {
+            setUploadMsg("");
+            setUploadErr("");
+            setUploading(true);
+
+            const form = new FormData();
+            for (const f of uploadFiles) form.append("files", f);
+
+            form.append("transactionType", "DISPATCH");
+            form.append("transactionId", createdId!);
+            form.append("warehouseId", warehouseId);
+            form.append("direction", "OUT");
+
+           const res = await api.get("/inventory-media/list", {
+  params: {
+    transactionType: "DISPATCH",
+    transactionId: createdId,
+  },
+});
+
+            setUploadMsg("Uploaded successfully");
+            setUploadFiles([]);
+            // reload list
+            await loadMediaForDispatch();
+          } catch (error: any) {
+            setUploadErr(error?.response?.data?.message || "Upload failed");
+          } finally {
+            setUploading(false);
+          }
+        }}
+        className="rounded-md bg-blue-500 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-blue-400 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+
+      {uploadMsg && <div className="text-emerald-400">{uploadMsg}</div>}
+      {uploadErr && <div className="text-orange-400">{uploadErr}</div>}
+    </div>
+
+    {/* Media List Section */}
+    <div>
+      <div className="mb-1 font-semibold text-slate-100">Uploaded Media</div>
+
+      {!mediaList.length ? (
+        <div className="text-xs text-slate-400">No media uploaded yet</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {mediaList.map((m) => {
+            const isVideo = m.fileType === "video";
+            const url = `/inventory-media/${m.localPath}`;
+
+            return (
+              <div
+                key={m._id}
+                className="p-2 rounded-md border border-slate-700 bg-slate-900"
+              >
+                {isVideo ? (
+                  <video controls className="rounded w-full h-32 object-cover">
+                    <source src={url} />
+                  </video>
+                ) : (
+                  <img
+                    src={url}
+                    className="rounded w-full h-32 object-cover"
+                    alt="media"
+                  />
+                )}
+
+                <div className="mt-1 text-[10px] text-slate-400 overflow-hidden">
+                  {m.localPath}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
         </div>
 
         {/* Right Panel - instructions */}
@@ -419,8 +535,8 @@ const DispatchPage: React.FC = () => {
             <li>Enter party/customer name.</li>
             <li>Search product and add lines.</li>
             <li>
-              Qty (pcs) = <span className="font-semibold">quantityBase</span>{" "}
-              correctly set in pieces.
+              Qty (pcs) ={" "}
+              <span className="font-semibold">quantity</span> (sirf pieces).
             </li>
             <li>Save → Dispatch DRAFT banega.</li>
             <li>Approve → Stock OUT hogi from warehouse.</li>

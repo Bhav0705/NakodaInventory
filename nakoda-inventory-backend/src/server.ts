@@ -50,18 +50,17 @@ async function start() {
     res.json({ message: 'Nakoda Inventory Backend API' });
   });
 
-  app.use('/api/auth', authRoutes);
-  app.use('/api/warehouses', warehouseRoutes);
-  app.use('/api/products', productRoutes);
-  app.use('/api/stock', stockRoutes);
-  app.use('/api/grn', grnRoutes);
-  app.use('/api/dispatch', dispatchRoutes);
-  app.use('/api/inventory-media', mediaRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/transfer', transferRoutes);
-
-  // ✅ sirf yahan ek baar
-  app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/stock', stockRoutes);
+app.use('/api/grn', grnRoutes);
+app.use('/api/dispatch', dispatchRoutes);
+app.use('/api/inventory-media', mediaRoutes);
+      
+app.use('/api/users', userRoutes);
+app.use('/api/transfer', transferRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
   app.use(errorHandler);
 
