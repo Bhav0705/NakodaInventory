@@ -18,6 +18,9 @@ import mediaRoutes from './routes/mediaRoutes';
 import userRoutes from './routes/userRoutes';
 import transferRoutes from './routes/transferRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import path from 'path';
+
+
 
 async function start() {
   await connectDatabase();
@@ -49,6 +52,18 @@ async function start() {
   app.get('/', (_req, res) => {
     res.json({ message: 'Nakoda Inventory Backend API' });
   });
+
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.join(__dirname, '../uploads'))
+);
+
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/warehouses', warehouseRoutes);

@@ -8,6 +8,7 @@ export interface IProduct extends Document {
   category?: string;
   baseUnit: BaseUnit;  // always 'PCS'
   mainImageUrl?: string;
+  images: string[];    // gallery
   status: 'active' | 'inactive';
 }
 
@@ -17,16 +18,20 @@ const ProductSchema = new Schema<IProduct>(
     sku: { type: String, required: true, unique: true },
     category: String,
 
-    // base unit fixed to PCS
     baseUnit: {
       type: String,
       enum: ['PCS'],
       default: 'PCS',
-      required: true
+      required: true,
     },
 
     mainImageUrl: String,
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' }
+    images: {
+      type: [String],
+      default: [],
+    },
+
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   { timestamps: true }
 );

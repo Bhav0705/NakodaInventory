@@ -17,7 +17,7 @@ export function auth(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const payload = verifyToken(token);
 
-    // KEY FIX
+  
     payload.warehouses = payload.assignedWarehouses || [];
 
     req.user = payload;
