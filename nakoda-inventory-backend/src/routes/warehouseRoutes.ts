@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth';
 import {
   listWarehouses,
+  listTransferWarehouses,
   createWarehouse,
   updateWarehouse,
   deleteWarehouse,
@@ -11,7 +12,7 @@ const router = Router();
 
 // Everyone authenticated can list (with filter)
 router.get('/', auth, listWarehouses);
-
+router.get("/transfer-options", auth, listTransferWarehouses);
 router.post('/', auth, createWarehouse);
 router.put('/:id', auth, updateWarehouse);
 router.delete('/:id', auth, deleteWarehouse);

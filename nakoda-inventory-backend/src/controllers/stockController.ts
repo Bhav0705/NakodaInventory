@@ -162,21 +162,27 @@ export async function adjustStock(req: AuthRequest, res: Response) {
 
     const positive = delta > 0;
 
-    await StockMovement.create({
-      warehouseId,
-      productId,
-      direction: positive ? 'IN' : 'OUT',
-      quantityBase: Math.abs(delta),
-      transactionType: positive
-        ? 'ADJUSTMENT_POSITIVE'
-        : 'ADJUSTMENT_NEGATIVE',
-      transactionId: updated?._id,
-      notes:
-        notes ||
-        `Manual adjustment from ${currentQty} → ${targetQty} pcs`,
-      createdBy: user.id,
-      timestamp: new Date(),
-    });
+   const baseNote =
+  notes?.trim() ||
+  `Manual adjustment from ${currentQty} → ${targetQty} pcs`;
+
+const finalNote = `${baseNote} (changed by ${user.id || 'admin'})`;
+
+// then:
+await StockMovement.create({
+  warehouseId,
+  productId,
+  direction: positive ? 'IN' : 'OUT',
+  quantityBase: Math.abs(delta),
+  transactionType: positive
+    ? 'ADJUSTMENT_POSITIVE'
+    : 'ADJUSTMENT_NEGATIVE',
+  transactionId: updated?._id,
+  notes: finalNote,
+  createdBy: user.id,
+  timestamp: new Date(),
+});
+
 
     res.json({
       message: 'Stock adjusted',

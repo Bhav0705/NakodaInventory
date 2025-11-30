@@ -109,6 +109,19 @@ export async function approveTransfer(req: Request, res: Response) {
     return res.status(403).json({ message: 'No access to source warehouse' });
   }
 
+  // ---- NEW: resolve warehouse labels for notes ----
+  const fromWh = await Warehouse.findById(transfer.fromWarehouseId).lean();
+  const toWh = await Warehouse.findById(transfer.toWarehouseId).lean();
+
+  const fromLabel = fromWh
+    ? `${fromWh.name}${fromWh.code ? ` (${fromWh.code})` : ''}`
+    : String(transfer.fromWarehouseId);
+
+  const toLabel = toWh
+    ? `${toWh.name}${toWh.code ? ` (${toWh.code})` : ''}`
+    : String(transfer.toWarehouseId);
+  // -------------------------------------------------
+
   // 1) validate stock in source warehouse (all quantities in pieces)
   for (const line of transfer.lines) {
     const qty = Number((line as any).quantity || 0);
@@ -153,10 +166,11 @@ export async function approveTransfer(req: Request, res: Response) {
       productId: line.productId,
       warehouseId: transfer.fromWarehouseId,
       direction: 'OUT',
-      quantityBase: qty,          // pieces
+      quantityBase: qty, // pieces
       transactionType: 'TRANSFER_OUT',
       transactionId: transfer._id,
-      notes: 'Warehouse transfer OUT',
+      // 👇 UPDATED NOTE: show destination warehouse
+      notes: `Warehouse transfer OUT → ${toLabel}`,
       createdBy: user.id,
       timestamp: new Date(),
     });
@@ -176,10 +190,11 @@ export async function approveTransfer(req: Request, res: Response) {
       productId: line.productId,
       warehouseId: transfer.toWarehouseId,
       direction: 'IN',
-      quantityBase: qty,          // pieces
+      quantityBase: qty, // pieces
       transactionType: 'TRANSFER_IN',
       transactionId: transfer._id,
-      notes: 'Warehouse transfer IN',
+      // 👇 UPDATED NOTE: show source warehouse
+      notes: `Warehouse transfer IN ← ${fromLabel}`,
       createdBy: user.id,
       timestamp: new Date(),
     });
@@ -192,3 +207,4 @@ export async function approveTransfer(req: Request, res: Response) {
 
   res.json({ message: 'Transfer approved', transfer });
 }
+

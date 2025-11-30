@@ -5,9 +5,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'nakoda_secret';
 export interface JwtPayload {
   id: string;
   role: string;
-  assignedWarehouses: string[];
-  // add this line ↓
-  warehouses?: string[];   // derived at runtime from assignedWarehouses
+  assignedWarehouses?: string[];
+  warehouses?: string[]; // derived at runtime
 }
 
 export function signToken(payload: JwtPayload) {

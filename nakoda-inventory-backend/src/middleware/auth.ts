@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { JwtPayload, verifyToken } from "../utils/jwt";
 
 export interface AuthRequest extends Request {
-  user?: JwtPayload & { warehouses?: string[] };
+  user?: JwtPayload;
 }
 
 export function auth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -17,7 +17,7 @@ export function auth(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const payload = verifyToken(token);
 
-  
+    // derive access warehouses
     payload.warehouses = payload.assignedWarehouses || [];
 
     req.user = payload;
