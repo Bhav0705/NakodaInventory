@@ -7,16 +7,31 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const baseNav = [
-    { path: '/', label: 'Dashboard' },
-    { path: '/warehouses', label: 'Warehouses' },
-    { path: '/products', label: 'Products' },
-    { path: '/stock', label: 'Stock Summary' },
-    { path: '/grn', label: 'GRN (Goods In)' },
-    { path: '/dispatch', label: 'Dispatch (Goods Out)' },
-    { path: '/transfer', label: 'Transfer (WH → WH)' },
-    { path: '/media-test', label: 'Media Upload Test' },
-  ];
+const baseNav = [
+  { path: '/', label: 'Dashboard' },
+
+  // Inventory
+  { path: '/warehouses', label: 'Warehouses' },
+  { path: '/products', label: 'Products' },
+  { path: '/stock', label: 'Stock Summary' },
+  { path: '/grn', label: 'GRN (Goods In)' },
+  { path: '/dispatch', label: 'Dispatch (Goods Out)' },
+  { path: '/transfer', label: 'Transfer (WH → WH)' },
+
+  // Sales ERP
+  { path: '/sales/invoices', label: 'Sales Invoices' },
+  { path: '/sales/receipts', label: 'Receipts / Payments' },
+  { path: '/sales/returns', label: 'Sales Returns' },
+
+  // Reports
+  { path: '/sales/reports/outstanding', label: 'Outstanding Report' },
+  { path: '/sales/reports/daily', label: 'Daily Collections' },
+  { path: '/sales/reports/ledger', label: 'Customer Ledger' },
+
+  // Utility
+  { path: '/media-test', label: 'Media Upload Test' },
+];
+
 
   const navItems =
     user?.role === 'super_admin'
@@ -47,7 +62,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Mobile top bar */}
       <header className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3 md:hidden">
         <div className="flex flex-col">
-          <span className="text-base font-semibold">Nakoda Inventory</span>
+          <span className="text-base font-semibold">Nakoda ERP System</span>
           {user && (
             <span className="text-xs text-slate-400">
               {user.name} • {user.role}
@@ -107,7 +122,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Desktop sidebar */}
       <aside className="hidden w-60 flex-col border-r border-slate-800 bg-slate-950 px-3 py-4 md:flex">
         <div className="mb-6 text-lg font-semibold text-slate-100">
-          Nakoda Inventory
+       Nakoda ERP System
         </div>
         <nav className="flex flex-col gap-1 text-sm">
           {renderNavLinks()}

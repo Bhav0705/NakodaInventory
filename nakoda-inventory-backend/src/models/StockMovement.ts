@@ -6,7 +6,9 @@ export type MovementType =
   | 'TRANSFER_OUT'
   | 'TRANSFER_IN'
   | 'ADJUSTMENT_POSITIVE'
-  | 'ADJUSTMENT_NEGATIVE';
+  | 'ADJUSTMENT_NEGATIVE'
+  | 'SALE'
+  | 'SALE_RETURN';
 
 export interface IStockMovement extends Document {
   transactionType: MovementType;

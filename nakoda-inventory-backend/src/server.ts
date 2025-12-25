@@ -19,6 +19,10 @@ import userRoutes from './routes/userRoutes';
 import transferRoutes from './routes/transferRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import path from 'path';
+import customersRoutes from "./sales/routes/customersRoutes";
+import salesRoutes from "./sales/routes/salesRoutes";
+
+
 
 
 
@@ -65,6 +69,9 @@ app.use(
 
 
 
+app.use("/api/customers", customersRoutes);
+
+
 app.use('/api/auth', authRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/products', productRoutes);
@@ -76,6 +83,8 @@ app.use('/api/inventory-media', mediaRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use("/api/sales", salesRoutes);
+
 
   app.use(errorHandler);
 

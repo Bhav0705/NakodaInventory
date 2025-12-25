@@ -40,12 +40,15 @@ export async function registerSuperAdmin(req: Request, res: Response) {
 
   const assignedIds: string[] = [];
 
-  const token = signToken({
-    id: user._id.toString(),
-    role: user.role,
-    assignedWarehouses: assignedIds,
-    warehouses: assignedIds, // mirror
-  });
+ const token = signToken({
+  sub: user._id.toString(),
+  id: user._id.toString(),
+  role: user.role,
+  assignedWarehouses: assignedIds,
+  warehouses: assignedIds,
+  email: user.email,
+  name: user.name,
+});
 
   res.json({
     token,
@@ -84,11 +87,15 @@ export async function login(req: Request, res: Response) {
   );
 
   const token = signToken({
-    id: user._id.toString(),
-    role: user.role,
-    assignedWarehouses: assignedIds,
-    warehouses: assignedIds, // alias for convenience
-  });
+  sub: user._id.toString(),
+  id: user._id.toString(),
+  role: user.role,
+  assignedWarehouses: assignedIds,
+  warehouses: assignedIds,
+  email: user.email,
+  name: user.name,
+});
+
 
   res.json({
     token,
@@ -111,7 +118,9 @@ export async function me(req: AuthRequest, res: Response) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  const data = await User.findById(req.user.id).populate('assignedWarehouses');
+const userId = (req.user as any).id || (req.user as any).sub;
+const data = await User.findById(userId).populate('assignedWarehouses');
+
 
   if (!data) {
     return res.status(404).json({ message: 'User not found' });

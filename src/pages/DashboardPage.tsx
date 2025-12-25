@@ -101,7 +101,7 @@ const DashboardPage: React.FC = () => {
               <span className="font-medium text-slate-50">
                 {user?.name || "User"}
               </span>
-              . Review your inventory overview and jump into key actions.
+              . Review your ERP overview and jump into key actions.
             </p>
           </div>
 
