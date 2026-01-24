@@ -100,7 +100,6 @@ const SalesReturnPage: React.FC = () => {
     [invoices, invoiceId]
   );
 
-  // When invoice selected, set warehouseId and prefill lines from invoice items (editable)
   useEffect(() => {
     if (!selectedInvoice) {
       setWarehouseId("");

@@ -25,7 +25,7 @@ const MediaUploadPage: React.FC = () => {
   const [err, setErr] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Load warehouses (normalize to {id, name, code})
+ 
   useEffect(() => {
     async function load() {
       try {

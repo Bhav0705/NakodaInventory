@@ -9,7 +9,7 @@ type DashboardSummary = {
   pendingDispatch: number;
 };
 
-// .env me: VITE_API_BASE_URL=http://localhost:5000/api
+
 const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const DashboardPage: React.FC = () => {
@@ -149,7 +149,7 @@ const DashboardPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Quick actions */}
+    
         <section>
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:text-sm">
             Quick Actions

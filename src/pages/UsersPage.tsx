@@ -144,9 +144,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  // --------------------------------------------------------------------
-  // Guard: only super_admin can access this page
-  // --------------------------------------------------------------------
+ 
   if (user?.role !== 'super_admin') {
     return (
       <div className="text-sm text-orange-400">
@@ -155,9 +153,7 @@ const UsersPage: React.FC = () => {
     );
   }
 
-  // --------------------------------------------------------------------
-  // UI
-  // --------------------------------------------------------------------
+ 
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold text-slate-100">

@@ -79,10 +79,10 @@ export default function SalesInvoicePage() {
       const pRes = await api.get("/products");
       setProducts(pRes.data || []);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [user?.role]);
 
-  // Load customers (if endpoint exists). If 404, UI still works with WALK_IN mode.
+ 
   useEffect(() => {
     (async () => {
       try {

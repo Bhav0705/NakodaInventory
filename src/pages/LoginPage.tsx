@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* One-time super admin creator – visible only when no super_admin exists */}
+
         {hasSuperAdmin === false && (
           <form
             onSubmit={handleCreateSuperAdmin}

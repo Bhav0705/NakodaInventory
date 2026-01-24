@@ -7,7 +7,7 @@ React + Vite + TypeScript frontend that connects to the Nakoda Inventory backend
 ```bash
 npm install
 cp .env.example .env
-# if backend is on a different URL, change VITE_API_BASE_URL
+
 npm run dev
 ```
 

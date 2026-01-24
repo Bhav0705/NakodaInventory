@@ -13,9 +13,9 @@ const primaryBtnCls =
 const cardCls = "rounded-2xl border border-slate-800 bg-slate-950/60 shadow-sm";
 
 function isoTodayIST() {
-  // keep consistent with backend timezone usage (Asia/Kolkata)
+
   const now = new Date();
-  // if browser is IST this is enough; otherwise still OK for UX
+  
   return now.toISOString().slice(0, 10);
 }
 
@@ -27,9 +27,7 @@ function inr(n: number) {
 const DailySummaryPage: React.FC = () => {
   const today = isoTodayIST();
 
-  // IMPORTANT:
-  // Backend expects createdAt: {$gte: from, $lt: to}
-  // So to include a full day, pass "to = next day".
+
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(() => {
     const d = new Date();

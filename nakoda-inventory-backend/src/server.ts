@@ -22,10 +22,6 @@ import path from 'path';
 import customersRoutes from "./sales/routes/customersRoutes";
 import salesRoutes from "./sales/routes/salesRoutes";
 
-
-
-
-
 async function start() {
   await connectDatabase();
 

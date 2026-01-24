@@ -7,7 +7,7 @@ Simple inventory backend for Nakoda Mobile.
 ```bash
 npm install
 cp .env.example .env
-# edit .env (MONGO_URI, etc.)
+
 npm run dev
 ```
 
